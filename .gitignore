@@ -1,0 +1,39 @@
+node_modules/
+dist/
+build/
+.turbo/
+.output/
+out/
+release/
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db
+
+# Electron
+*.dmg
+*.exe
+*.AppImage
+*.deb
+
+# Whisper models (too big for git)
+*.gguf
+*.bin
+models/
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temp
+tmp/
+.cache/

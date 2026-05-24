@@ -1,0 +1,46 @@
+{
+  "name": "@fluentquest/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "electron .",
+    "dev": "tsc -p tsconfig.json && electron .",
+    "typecheck": "tsc --noEmit",
+    "package": "tsc -p tsconfig.json && electron-builder --dir",
+    "dist": "tsc -p tsconfig.json && electron-builder",
+    "clean": "rimraf dist release .turbo"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "com.fluentquest.desktop",
+    "productName": "FluentQuest",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
