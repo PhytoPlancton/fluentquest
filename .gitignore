@@ -21,10 +21,11 @@ Thumbs.db
 *.AppImage
 *.deb
 
-# Whisper models (too big for git)
+# Whisper model binaries (too big for git) — extensions only, pas de pattern `models/`
+# qui shadowait `packages/db/src/models/`
 *.gguf
 *.bin
-models/
+apps/desktop/whisper-models/
 
 # IDE
 .vscode/

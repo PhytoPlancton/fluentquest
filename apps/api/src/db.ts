@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { assertEncryptionConfigured } from '@fluentquest/db';
 
 let connected = false;
 
@@ -11,6 +12,9 @@ export async function connectMongo(): Promise<void> {
 
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MONGODB_URI is required');
+
+  // Fail fast if field encryption isn't configured — schemas use it.
+  assertEncryptionConfigured();
 
   mongoose.set('strictQuery', true);
 

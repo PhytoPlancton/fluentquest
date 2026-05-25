@@ -48,19 +48,29 @@ Stack précise :
 ## Roadmap
 
 - [x] **M0** — Scaffold monorepo (npm workspaces + Turbo, apps/packages skeletons, Dockerfiles, GitHub workflows, README) — vérifié : API smoke test OK (`/v1/ping`, `/v1/health`), 7 packages buildent via Turbo
-- [ ] **M1** — DB schemas : User, Workspace, Membership, Invitation, Session, Segment, Faute, Exercise, SRSState
-- [ ] **M2** — API auth (Better-Auth email/pw), workspaces multi-tenant, invitations, sessions CRUD
-- [ ] **M3** — Desktop : audio capture Mac (ScreenCaptureKit) + Win (WASAPI loopback)
-- [ ] **M4** — Desktop : Whisper.cpp embedded, prompt verbatim "preserve grammatical errors"
-- [ ] **M5** — Desktop : pyannote ONNX diarization (qui parle quand)
-- [ ] **M6** — API : LLM pipeline edj-labs `pplx-claude-sonnet-4.6` → JSON structuré fautes/intéressants/sévérité
-- [ ] **M7** — API : génération exercices (QCM puis réécriture, phrases variables par session)
-- [ ] **M8** — Web : review UI + exercices + difficulté adaptative par profil
-- [ ] **M9** — API : SRS SM-2 + queue + scheduling
-- [ ] **M10** — API : estimation niveau + reco palier suivant (idiomes/règles à connaître)
-- [ ] **M11** — CI/CD : GitHub Actions build + push GHCR (`ghcr.io/phytoplancton/fluentquest-{api,web}`)
-- [ ] **M12** — Deploy EDJ Labs : 2 stacks, Cloudflare DNS, Traefik labels, TLS Let's Encrypt
-- [ ] **M13** — Packaging desktop : Mac notarization + Win signing + auto-update
+- [x] **M1** — DB schemas (9 modèles Mongoose + Zod-ready) — vérifié : 7/7 build Turbo, crypto round-trip OK, idempotent
+  - Crypto AES-256-GCM field-level pour : `Segment.text`, `Session.audioUrl`, `Faute.originalText/correctedText`, `Exercise.prompt/correctAnswer/userAnswer`
+  - `passwordHash` en `select: false` (jamais retourné par défaut)
+  - Index : email unique, workspace slug unique, membership composé userId+workspaceId, srs userId+fauteId, etc.
+- [x] **M2** — API auth + workspaces + invitations + recording sessions CRUD — vérifié : 7/7 build, 21/21 tests, smoke 401 sur endpoints protégés
+  - Auth custom (argon2id + sessions DB-backed + cookies signés Hono) — pas Better-Auth pour éviter conflit schémas Mongoose
+  - Mongo non connecté jusqu'au M12 → verify = typecheck strict + unit tests sur la logique pure (passwords, slug, crypto, session tokens)
+  - Routes implémentées :
+    - `/v1/auth` : signup, login, logout, me
+    - `/v1/workspaces` : CRUD + members + invitations + role mgmt (RBAC owner/admin/member)
+    - `/v1/invitations` : token-based preview + accept
+    - `/v1/sessions` : create, list, get (+ segments), patch, bulk segments, end
+- [⚠️] **M3** — Desktop audio capture Mac/Win : interface + dispatch + stubs (capture-mac.ts, capture-win.ts) — compile OK, mais **NE CAPTURE RIEN** sans bindings natifs (ScreenCaptureKit Swift addon Mac, WASAPI loopback C++ addon Win). Voir TODO dans chaque fichier + tasks/DESKTOP-PACKAGING.md "Phase A"
+- [⚠️] **M4** — Desktop Whisper.cpp wrapper subprocess (whisper.ts) — compile OK, mais **nécessite binaire whisper-cli bundlé + modèle GGUF téléchargé** (~3Go large-v3). Verbatim mode prompt OK (`temperature=0 + "preserve all grammatical errors"`). Voir DESKTOP-PACKAGING.md "Phase B"
+- [⚠️] **M5** — Desktop pyannote ONNX diarization (pyannote.ts) — compile OK, fallback single-speaker. **Nécessite modèles ONNX téléchargés** + intégration onnxruntime-node. Helper `mergeTranscriptDiarization` fonctionnel. Voir DESKTOP-PACKAGING.md "Phase C"
+- [x] **M6** — API LLM pipeline edj-labs `pplx-claude-sonnet-4.6` — vérifié : typecheck OK, prompts strictement structurés (Zod validation), endpoint POST /v1/sessions/:id/analyze fire-and-forget. **Runtime non testé** (pas de Mongo). Fichiers : `apps/api/src/llm/{client,prompts,schemas,analyze-session}.ts`
+- [x] **M7** — API génération exercices — vérifié : typecheck OK. Endpoint POST /v1/fautes/:id/exercises génère 2-3 QCM + 1 rewrite via LLM. Phrases variables (prompt explicite : "DIFFERENT content, same rule"). Fichier : `apps/api/src/llm/generate-exercises.ts`
+- [x] **M8** — Web review UI + exercices — vérifié : 7/7 build, 9 routes, AuthGuard + AppShell + SDK étendu, dark mode shadcn. Placeholder data jusqu'à connexion Mongo. Voir `tasks/web-m8-status.md`
+- [x] **M9** — API SRS Anki SM-2 — vérifié : 8/8 unit tests passent. Endpoint GET /v1/srs/queue + POST /v1/srs/review. EaseFactor jamais < 1.3, intervalle = (1, 6, then × ease), lapses tracked. Fichier : `apps/api/src/srs/sm2.ts`
+- [x] **M10** — API estimation niveau + recommandations — vérifié : typecheck OK. À la fin de `analyzeSession`, on attribue le niveau CEFR estimé au speaker majoritaire (word-count) sur la langue détectée. Recommandations encodées dans `session.title` (à migrer vers collection dédiée plus tard)
+- [x] **M11** — CI/CD : `.github/workflows/{build-api,build-web,release}.yml` posés. Auto-build sur tag `v*` → push GHCR. **Repo GitHub PhytoPlancton/fluentquest pas encore créé** (action user requise)
+- [x] **M12** — Deploy doc complet : `tasks/DEPLOY.md` (stacks EDJ Labs, env vars, Deploy Labels Traefik, DNS Cloudflare, troubleshooting). **Exécution = action user** (créer DB Mongo, créer stacks, point DNS)
+- [x] **M13** — Desktop packaging doc : `tasks/DESKTOP-PACKAGING.md` (signature Mac notarization, Win code signing, auto-update, roadmap d'intégration des phases A-E). **Nécessite Apple Developer + Win signing cert (~300€/an total) + binaires natifs audio**
 
 ## Tâche en cours : M0 — scaffold monorepo
 
