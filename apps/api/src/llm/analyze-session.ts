@@ -7,6 +7,7 @@ import {
   type Language,
 } from '@fluentquest/db';
 import { llmJson } from './client.js';
+import { generateExercisesForFaute } from './generate-exercises.js';
 import { FAULT_DETECTION_SYSTEM, buildFaultDetectionUser } from './prompts.js';
 import { SessionAnalysisSchema, parseJsonStrict } from './schemas.js';
 
@@ -45,13 +46,14 @@ export async function analyzeSession(sessionId: string): Promise<void> {
     );
 
     const model = process.env.EDJ_DEFAULT_MODEL ?? 'pplx-claude-sonnet-4.6';
+    const createdFauteIds: string[] = [];
 
     for (const f of analysis.fautes ?? []) {
       const seg = segments[f.segmentIndex];
       if (!seg) continue;
 
       const userId = seg.assignedUserId ?? session.recordedByUserId;
-      await Faute.create({
+      const fauteDoc = await Faute.create({
         segmentId: seg._id,
         sessionId: session._id,
         workspaceId: session.workspaceId,
@@ -68,7 +70,13 @@ export async function analyzeSession(sessionId: string): Promise<void> {
         isInteresting: f.isInteresting,
         generatedByModel: model,
       });
+      createdFauteIds.push(String(fauteDoc._id));
     }
+
+    // Auto-generate exercises for the top fautes (severity ≥ 3) in background.
+    // We don't await — analysisStatus flips to 'done' once fautes are in,
+    // exercises trickle in over the next 30-90s.
+    void autoGenerateExercises(createdFauteIds, (analysis.fautes ?? []).slice(0, createdFauteIds.length));
 
     if (analysis.levelEstimate && analysis.languageDetected) {
       await updatePrimarySpeakerLevel(
@@ -80,7 +88,12 @@ export async function analyzeSession(sessionId: string): Promise<void> {
 
     const recos = analysis.recommendations ?? [];
     if (recos.length > 0) {
-      session.title = (session.title ?? '') + ` [recos:${JSON.stringify(recos)}]`;
+      // TODO: persist into a dedicated Recommendation collection (M10 follow-up).
+      // The title-encoding hack overflowed Session.title (max 200) — dropped.
+      console.log(
+        `[analyzeSession] ${recos.length} recommendation(s) for session ${session._id}:`,
+        recos.map((r) => r.title).join(' | '),
+      );
     }
 
     session.analysisStatus = 'done';
@@ -90,6 +103,27 @@ export async function analyzeSession(sessionId: string): Promise<void> {
     await session.save();
     throw err;
   }
+}
+
+async function autoGenerateExercises(
+  fauteIds: string[],
+  parsed: Array<{ severity: number }>,
+): Promise<void> {
+  // Pair fauteIds with their severity to filter
+  const pairs = fauteIds.map((id, i) => ({ id, severity: parsed[i]?.severity ?? 0 }));
+  const targets = pairs
+    .filter((p) => p.severity >= 3)
+    .sort((a, b) => b.severity - a.severity)
+    .slice(0, 10); // cap to avoid runaway LLM cost
+
+  for (const t of targets) {
+    try {
+      await generateExercisesForFaute(t.id);
+    } catch (err) {
+      console.error(`[autoGenerateExercises] failed for ${t.id}:`, (err as Error).message);
+    }
+  }
+  console.log(`[autoGenerateExercises] done — generated for ${targets.length} fautes`);
 }
 
 async function updatePrimarySpeakerLevel(

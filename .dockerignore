@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/build
+**/.turbo
+**/.output
+**/out
+**/release
+.git
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
+*.dmg
+*.exe
+*.gguf
+*.bin

@@ -8,7 +8,7 @@ import type { UiRewriteExercise } from '@/types/review';
 
 interface Props {
   exercise: UiRewriteExercise;
-  onAnswered?: (correct: boolean) => void;
+  onAnswered?: (correct: boolean, userAnswer: string) => void | Promise<void>;
 }
 
 function normalize(value: string): string {
@@ -41,7 +41,6 @@ function diffWords(actual: string, expected: string): DiffToken[] {
     } else if (ei === undefined && ai !== undefined) {
       out.push({ text: ai, status: 'unexpected' });
     } else if (ai === ei) {
-      // SAFETY: both defined when neither undefined branch ran
       out.push({ text: ai as string, status: 'match' });
     } else {
       if (ai !== undefined) out.push({ text: ai, status: 'unexpected' });
@@ -62,7 +61,7 @@ export function ExerciseRewrite({ exercise, onAnswered }: Props) {
     event.preventDefault();
     if (submitted) return;
     setSubmitted(true);
-    onAnswered?.(normalize(value) === normalize(exercise.correctAnswer));
+    void onAnswered?.(normalize(value) === normalize(exercise.correctAnswer), value);
   };
 
   const handleReset = () => {

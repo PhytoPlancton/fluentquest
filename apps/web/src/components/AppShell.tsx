@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { LayoutDashboard, BookOpen, LogOut, Mic, Users, Sparkles } from 'lucide-react';
+import { LayoutDashboard, BookOpen, LogOut, Mic, Plus, Users, Sparkles } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -63,6 +63,13 @@ export function AppShell({ children }: Props) {
           label: 'Sessions',
           Icon: Mic,
           resolvedPath: `/workspaces/${activeWorkspaceId}/sessions`,
+        },
+        {
+          to: '/workspaces/$workspaceId/sessions/new',
+          params: { workspaceId: activeWorkspaceId },
+          label: 'New session',
+          Icon: Plus,
+          resolvedPath: `/workspaces/${activeWorkspaceId}/sessions/new`,
         },
         {
           to: '/workspaces/$workspaceId/exercises',

@@ -1,4 +1,4 @@
-import { Faute, type FauteCategory, type Severity } from '@fluentquest/db';
+import { Exercise, Faute, type FauteCategory, type Severity } from '@fluentquest/db';
 import { Hono } from 'hono';
 import mongoose from 'mongoose';
 import { generateExercisesForFaute } from '../llm/generate-exercises.js';
@@ -49,6 +49,87 @@ analysis.get('/sessions/:id/fautes', requireSessionAccess, async (c) => {
       ruleDeep: f.ruleDeep ?? null,
       examples: f.examples,
       isInteresting: f.isInteresting,
+    })),
+  });
+});
+
+// GET /v1/exercises/today  — flat list of recent exercises for the auth user,
+// each enriched with its source faute (original/corrected/rule/severity/lang).
+analysis.get('/exercises/today', async (c) => {
+  const user = c.get('user');
+  const limit = Math.min(50, Number(c.req.query('limit') ?? 30));
+
+  const exercises = await Exercise.find({ userId: user._id })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate<{
+      fauteId: {
+        _id: unknown;
+        originalText: string;
+        correctedText: string;
+        ruleSummary: string;
+        severity: number;
+        language: string;
+        category: string;
+      };
+    }>('fauteId', 'originalText correctedText ruleSummary severity language category')
+    .exec();
+
+  return c.json({
+    exercises: exercises.map((e) => {
+      const f = e.fauteId as unknown as {
+        _id: unknown;
+        originalText: string;
+        correctedText: string;
+        ruleSummary: string;
+        severity: number;
+        language: string;
+        category: string;
+      };
+      return {
+        id: String(e._id),
+        type: e.type,
+        prompt: e.prompt,
+        options: e.options ?? null,
+        correctAnswer: e.correctAnswer,
+        answeredAt: e.answeredAt ? e.answeredAt.toISOString() : null,
+        isCorrect: e.isCorrect,
+        faute: f && {
+          id: String(f._id),
+          originalText: f.originalText,
+          correctedText: f.correctedText,
+          ruleSummary: f.ruleSummary,
+          severity: f.severity,
+          language: f.language,
+          category: f.category,
+        },
+      };
+    }),
+  });
+});
+
+// GET /v1/fautes/:id/exercises — list exercises for a specific faute
+analysis.get('/fautes/:id/exercises', async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!mongoose.isValidObjectId(id)) return c.json({ error: 'invalid_faute_id' }, 400);
+
+  const faute = await Faute.findById(id).exec();
+  if (!faute) return c.json({ error: 'faute_not_found' }, 404);
+  if (String(faute.userId) !== String(user._id)) {
+    return c.json({ error: 'forbidden' }, 403);
+  }
+
+  const exercises = await Exercise.find({ fauteId: faute._id }).exec();
+  return c.json({
+    exercises: exercises.map((e) => ({
+      id: String(e._id),
+      type: e.type,
+      prompt: e.prompt,
+      options: e.options ?? null,
+      correctAnswer: e.correctAnswer,
+      answeredAt: e.answeredAt ? e.answeredAt.toISOString() : null,
+      isCorrect: e.isCorrect,
     })),
   });
 });

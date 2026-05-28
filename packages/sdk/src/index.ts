@@ -90,6 +90,47 @@ export interface SdkSegment {
   markedAt: string | null;
 }
 
+export type SdkFauteCategory =
+  | 'grammar'
+  | 'vocab'
+  | 'idiom'
+  | 'collocation'
+  | 'pronunciation'
+  | 'style';
+
+export interface SdkFauteSummary {
+  id: string;
+  originalText: string;
+  correctedText: string;
+  ruleSummary: string;
+  severity: 1 | 2 | 3 | 4 | 5;
+  language: Language;
+  category: SdkFauteCategory;
+}
+
+export interface SdkExercise {
+  id: string;
+  type: 'mcq' | 'rewrite' | 'fill_blank';
+  prompt: string;
+  options: string[] | null;
+  correctAnswer: string;
+  answeredAt: string | null;
+  isCorrect: boolean | null;
+  faute?: SdkFauteSummary;
+}
+
+export interface SdkReviewResult {
+  isCorrect: boolean;
+  correctAnswer: string;
+  srs: {
+    easeFactor: number;
+    intervalDays: number;
+    repetitions: number;
+    lapses: number;
+    nextReviewAt: string;
+  };
+}
+
 // ── SDK error ───────────────────────────────────────────────────────────
 
 export class SdkError extends Error {
@@ -226,6 +267,16 @@ export interface FluentClient {
     segments: SdkSegment[];
   }>;
   endRecordingSession(id: string): Promise<{ session: SdkRecordingSession }>;
+
+  // exercises + review
+  listTodayExercises(limit?: number): Promise<{ exercises: SdkExercise[] }>;
+  listExercisesForFaute(fauteId: string): Promise<{ exercises: SdkExercise[] }>;
+  generateExercisesForFaute(fauteId: string): Promise<{ inserted: number }>;
+  submitReview(
+    exerciseId: string,
+    userAnswer: string,
+    quality?: number,
+  ): Promise<SdkReviewResult>;
 }
 
 export function createClient(config: SdkConfig): FluentClient {
@@ -283,5 +334,16 @@ export function createClient(config: SdkConfig): FluentClient {
       request('/v1/sessions', { method: 'POST', body: JSON.stringify(payload) }),
     getRecordingSession: (id) => request(`/v1/sessions/${id}`),
     endRecordingSession: (id) => request(`/v1/sessions/${id}/end`, { method: 'POST' }),
+
+    listTodayExercises: (limit) =>
+      request(`/v1/exercises/today${limit ? `?limit=${limit}` : ''}`),
+    listExercisesForFaute: (fauteId) => request(`/v1/fautes/${fauteId}/exercises`),
+    generateExercisesForFaute: (fauteId) =>
+      request(`/v1/fautes/${fauteId}/exercises`, { method: 'POST' }),
+    submitReview: (exerciseId, userAnswer, quality) =>
+      request('/v1/srs/review', {
+        method: 'POST',
+        body: JSON.stringify({ exerciseId, userAnswer, ...(quality !== undefined && { quality }) }),
+      }),
   };
 }

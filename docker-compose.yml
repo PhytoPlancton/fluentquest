@@ -1,0 +1,34 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: fluentquest-api:local
+    container_name: fluentquest-api
+    env_file:
+      - .env
+    environment:
+      PORT: "3000"
+      CORS_ORIGINS: "http://localhost:8080,http://localhost:5173,app://fluentquest-desktop"
+    ports:
+      - "3030:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:3030"
+    image: fluentquest-web:local
+    container_name: fluentquest-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped

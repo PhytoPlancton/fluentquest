@@ -7,6 +7,7 @@ import { Route as dashboardRoute } from './routes/dashboard';
 import { Route as workspaceOverviewRoute } from './routes/workspace-overview';
 import { Route as workspaceSessionsRoute } from './routes/workspace-sessions';
 import { Route as sessionDetailRoute } from './routes/session-detail';
+import { Route as newSessionRoute } from './routes/new-session';
 import { Route as exercisesRoute } from './routes/exercises';
 import { Route as inviteRoute } from './routes/invite';
 
@@ -17,6 +18,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   workspaceOverviewRoute,
   workspaceSessionsRoute,
+  newSessionRoute,
   sessionDetailRoute,
   exercisesRoute,
   inviteRoute,

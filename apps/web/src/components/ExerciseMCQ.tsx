@@ -7,7 +7,7 @@ import type { UiMcq } from '@/types/review';
 
 interface Props {
   exercise: UiMcq;
-  onAnswered?: (correct: boolean) => void;
+  onAnswered?: (correct: boolean, userAnswer: string) => void | Promise<void>;
 }
 
 export function ExerciseMCQ({ exercise, onAnswered }: Props) {
@@ -22,7 +22,9 @@ export function ExerciseMCQ({ exercise, onAnswered }: Props) {
   const handleSubmit = () => {
     if (selected === null || submitted) return;
     setSubmitted(true);
-    onAnswered?.(selected === exercise.correctIndex);
+    const correct = selected === exercise.correctIndex;
+    const userAnswer = exercise.options[selected] ?? '';
+    void onAnswered?.(correct, userAnswer);
   };
 
   const handleReset = () => {
